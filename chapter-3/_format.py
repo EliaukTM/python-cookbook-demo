@@ -22,3 +22,18 @@ if __name__ == '__main__':
     print(format(x, '0,.1f'))
 
     print(format(x, 'e'))
+
+    print(format(x, '0.2E'))
+
+    print('The value is {:0,.2f}'.format(x))
+
+    """
+    当指定数字的位数后，结果值会根据 round() 函数同样的规则进行四舍五入后返回。
+    """
+    print(x)
+    print(format(x, '0.1f'))
+
+    swap_separators = {ord('.'): ',', ord(','): '.'}
+    print(format(x, ',').translate(swap_separators))
+
+
