@@ -18,7 +18,7 @@ class Date:
     def __format__(self, code):
         if code == '':
             code = 'ymd'
-            fmt = _formats[code]
+        fmt = _formats[code]
         return fmt.format(d=self)
 
 
