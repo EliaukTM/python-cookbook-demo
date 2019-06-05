@@ -18,6 +18,7 @@ from functools import wraps, partial
 # Utility decorator to attach a function as an attribute of obj
 def attach_wrapper(obj, func=None):
     if func is None:
+        # partial函数的功能就是：把一个函数的某些参数给固定住，返回一个新的函数。
         return partial(attach_wrapper, obj)
     setattr(obj, func.__name__, func)
     return func
@@ -51,12 +52,27 @@ def logged(level, name=None, message=None):
         def set_message(newmsg):
             nonlocal logmsg
             logmsg = newmsg
-            return wrapper
 
-        return decorate
+        return wrapper
+
+    return decorate
 
 
 # Example use
 @logged(logging.DEBUG)
 def add(x, y):
     return x + y
+
+
+@logged(logging.CRITICAL, 'example')
+def spam():
+    print('Spam!')
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+    add(2, 3)
+    add.set_message('Add called')
+    add(2, 3)
+    add.set_level(logging.WARNING)
+    add(2, 3)
