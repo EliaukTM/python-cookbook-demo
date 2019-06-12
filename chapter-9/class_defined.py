@@ -7,7 +7,6 @@
 如序列化、映射到数据库等等）。
 """
 
-
 # A set of descriptors for various types
 from collections import OrderedDict
 
@@ -51,3 +50,35 @@ class OrderedMeta(type):
     @classmethod
     def __prepare__(cls, clsname, bases):
         return OrderedDict()
+
+
+"""
+在这个元类中，执行类主体时描述器的定义顺序会被一个 OrderedDict`` 捕获到，
+生成的有序名称从字典中提取出来并放入类属性 `` order 中。这样的话类中的方法可以通
+过多种方式来使用它。例如，下面是一个简单的类，使用这个排序字典来实现将一个
+类实例的数据序列化为一行 CSV 数据：
+"""
+
+
+class Structure(metaclass=OrderedMeta):
+    def as_csv(self):
+        return ','.join(str(getattr(self, name)) for name in self._order)
+
+
+# Example use
+class Stock(Structure):
+    name = String()
+    shares = Integer()
+    price = Float()
+
+    def __init__(self, name, shares, price):
+        self.name = name
+        self.shares = shares
+        self.price = price
+
+
+if __name__ == '__main__':
+    s = Stock('GOOG', 100, 490.1)
+    print(s.name)
+    print(s.as_csv())
+    # t = Stock('AAPL', 'a lot', 610.23)
