@@ -1,6 +1,7 @@
 # Python魔法方法指南
 
 > http://www.rafekettler.com/magicmethods.html
+
 > https://pyzh.readthedocs.io/en/latest/python-magic-methods-guide.html
 
 ## 简介
