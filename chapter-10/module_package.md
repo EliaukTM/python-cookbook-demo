@@ -197,3 +197,89 @@ bar-package/
 >>>
 ```
 
+##  运行目录或压缩文件
+
+>您有已经一个复杂的脚本到涉及多个文件的应用程序。你想有一些简单的方法让用
+>户运行程序。
+
+如果你的应用程序已经有多个文件，你可以把你的应用程序放进它自己的目录并添
+加一个 main .py 文件。举个例子，你可以像这样创建目录：
+
+```
+myapplication/
+    spam.py
+    bar.py
+    grok.py
+    __main__.py
+```
+
+如果 main .py 存在，你可以简单地在顶级目录运行 Python 解释器：
+
+```
+ python3 myapplication
+```
+
+解释器将执行 main .py 文件作为主程序。
+如果你将你的代码打包成 zip 文件，这种技术同样也适用，举个例子：
+
+```
+zip -r myapp.zip *.py
+python3 myapp.zip
+```
+
+## 读取位于包中的数据文件
+
+>你的包中包含代码需要去读取的数据文件。你需要尽可能地用最便捷的方式来做这
+>件事。
+
+假设你的包中的文件组织成如下：
+
+```
+mypackage/
+    __init__.py
+    somedata.dat
+    spam.py
+```
+
+现在假设 spam.py 文件需要读取 somedata.dat 文件中的内容。你可以用以下代码
+来完成：
+
+```
+# spam.py
+import pkgutil
+data = pkgutil.get_data(__package__, 'somedata.dat')
+```
+
+由此产生的变量是包含该文件的原始内容的字节字符串。
+
+## 将文件夹加入到 sys.path
+
+>你无法导入你的 Python 代码因为它所在的目录不在 sys.path 里。你想将添加新目
+>录到 Python 路径，但是不想硬链接到你的代码。
+
+有两种常用的方式将新目录添加到 sys.path。第一种，你可以使用 PYTHONPATH
+环境变量来添加。例如：
+
+```bash
+bash % env PYTHONPATH=/some/dir:/other/dir python3
+Python 3.3.0 (default, Oct 4 2012, 10:17:33)
+[GCC 4.2.1 (Apple Inc. build 5666) (dot 3)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import sys
+>>> sys.path
+['', '/some/dir', '/other/dir', ...]
+>>>
+```
+
+第二种方法是创建一个.pth 文件，将目录列举出来，像这样：
+
+```
+# myapplication.pth
+/some/dir
+/other/dir
+```
+
+## 通过钩子远程加载模块
+
+> 你想自定义 Python 的 import 语句，使得它能从远程机器上面透明的加载模块。
+
