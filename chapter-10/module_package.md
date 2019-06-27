@@ -283,3 +283,233 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 > 你想自定义 Python 的 import 语句，使得它能从远程机器上面透明的加载模块。
 
+我们开始先构造下面这个 Python 代码结构：
+
+```
+testcode/
+    spam.py
+    fib.py
+    grok/
+        __init__.py
+        blah.py
+```
+
+这些文件的内容并不重要，不过我们在每个文件中放入了少量的简单语句和函数，
+这样你可以测试它们并查看当它们被导入时的输出。例如：
+
+```python
+# spam.py
+print("I'm spam")
+
+def hello(name):
+	print('Hello %s' % name)
+
+# fib.py
+print("I'm fib")
+def fib(n):
+	if n < 2:
+		return 1
+	else:
+		return fib(n-1) + fib(n-2)
+    
+# grok/__init__.py
+print("I'm grok.__init__")
+
+# grok/blah.py
+print("I'm grok.blah")
+```
+
+这里的目的是允许这些文件作为模块被远程访问。也许最简单的方式就是将它们发
+布到一个 web 服务器上面。在 testcode 目录中像下面这样运行 Python：
+
+```bash
+bash % cd testcode
+bash % python3 -m http.server 15000
+Serving HTTP on 0.0.0.0 port 15000 ...
+```
+
+服务器运行起来后再启动一个单独的 Python 解释器。确保你可以使用 urllib 访
+问到远程文件。例如：
+
+```python
+>>> from urllib.request import urlopen
+>>> u = urlopen('http://localhost:15000/fib.py')
+>>> data = u.read().decode('utf-8')
+>>> print(data)
+# fib.py
+print("I'm fib")
+
+def fib(n):
+	if n < 2:
+		return 1
+	else:
+		return fib(n-1) + fib(n-2)
+>>>
+```
+
+加载远程模块的第一种方法是创建一个显示的加载函数来完成它。例如：
+
+```python
+import imp
+import urllib.request
+import sys
+
+def load_module(url):
+    u = urllib.request.urlopen(url)
+    source = u.read().decode('utf-8')
+    mod = sys.modules.setdefault(url, imp.new_module(url))
+    code = compile(source, url, 'exec')
+    mod.__file__ = url
+    mod.__package__ = ''
+    exec(code, mod.__dict__)
+    return mod
+```
+
+这个函数会下载源代码，并使用 compile() 将其编译到一个代码对象中，然后在
+一个新创建的模块对象的字典中来执行它。下面是使用这个函数的方式：
+
+```python
+>>> fib = load_module('http://localhost:15000/fib.py')
+I'm fib
+>>> fib.fib(10)
+89
+>>> spam = load_module('http://localhost:15000/spam.py')
+I'm spam
+>>> spam.hello('Guido')
+Hello Guido
+>>> fib
+<module 'http://localhost:15000/fib.py' from 'http://localhost:15000/fib.py'>
+>>> spam
+<module 'http://localhost:15000/spam.py' from 'http://localhost:15000/spam.py'>
+>>>
+```
+
+更高深的略，可参看书籍
+
+## 安装私有的包
+
+>你想要安装一个第三方包，但是没有权限将它安装到系统 Python 库中去。或者，
+>你可能想要安装一个供自己使用的包，而不是系统上面所有用户。
+
+Python 有一个用户安装目录，通常类似”˜/.local/lib/python3.3/site-packages”。要
+强制在这个目录中安装包，可使用安装选项“–user”。例如：
+
+```bash
+python3 setup.py install --user
+```
+
+或者
+
+```shell
+pip install --user packagename
+```
+
+在 sys.path 中用户的“site-packages”目录位于系统的“site-packages”目录之前。
+因此，你安装在里面的包就比系统已安装的包优先级高（尽管并不总是这样，要取决
+于第三方包管理器，比如 distribute 或 pip）。
+
+## 创建新的 Python 环境
+
+> 你想创建一个新的 Python 环境，用来安装模块和包。不过，你不想安装一个新的
+> Python 克隆，也不想对系统 Python 环境产生影响。
+
+你可以使用 pyvenv 命令创建一个新的“虚拟”环境。这个命令被安装在 Python
+解释器同一目录，或 Windows 上面的 Scripts 目录中。下面是一个例子：
+
+```bash
+bash % pyvenv Spam
+bash %
+```
+
+传给 pyvenv 命令的名字是将要被创建的目录名。当被创建后，Span 目录像下面这
+样：
+
+```
+bash % cd Spam
+bash % ls
+bin include lib pyvenv.cfg
+bash %
+```
+
+在 bin 目录中，你会找到一个可以使用的 Python 解释器：
+
+```python
+bash % Spam/bin/python3
+Python 3.3.0 (default, Oct 6 2012, 15:45:22)
+[GCC 4.2.1 (Apple Inc. build 5666) (dot 3)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> from pprint import pprint
+>>> import sys
+>>> pprint(sys.path)
+['',
+'/usr/local/lib/python33.zip',
+'/usr/local/lib/python3.3',
+'/usr/local/lib/python3.3/plat-darwin',
+'/usr/local/lib/python3.3/lib-dynload',
+'/Users/beazley/Spam/lib/python3.3/site-packages']
+>>>
+```
+
+这个解释器的特点就是他的 site-packages 目录被设置为新创建的环境。如果你要
+安装第三方包，它们会被安装在那里，而不是通常系统的 site-packages 目录。
+
+## 分发包
+
+> 你已经编写了一个有用的库，想将它分享给其他人。
+
+如果你想分发你的代码，第一件事就是给它一个唯一的名字，并且清理它的目录结
+构。例如，一个典型的函数库包会类似下面这样：
+
+```
+projectname/
+    README.txt
+    Doc/
+		documentation.txt
+    projectname/
+        __init__.py
+        foo.py
+        bar.py
+    utils/
+        __init__.py
+        spam.py
+        grok.py
+    examples/
+    	helloworld.py
+    ...
+```
+
+要让你的包可以发布出去，首先你要编写一个 setup.py ，类似下面这样：
+
+```python
+# setup.py
+from distutils.core import setup
+
+setup(name='projectname',
+    version='1.0',
+    author='Your Name',
+    author_email='you@youraddress.com',
+    url='http://www.you.com/projectname',
+    packages=['projectname', 'projectname.utils'],
+)
+```
+
+下一步，就是创建一个 MANIFEST.in 文件，列出所有在你的包中需要包含进来的
+非源码文件：
+
+```ini
+# MANIFEST.in
+include *.txt
+recursive-include examples *
+recursive-include Doc *
+```
+
+确保 setup.py 和 MANIFEST.in 文件放在你的包的最顶级目录中。一旦你已经做了
+这些，你就可以像下面这样执行命令来创建一个源码分发包了：
+
+```bash
+% bash python3 setup.py sdist
+```
+
+它会创建一个文件比如”projectname-1.0.zip” 或“projectname-1.0.tar.gz”, 具体
+依赖于你的系统平台。如果一切正常，这个文件就可以发送给别人使用或者上传至
+Python Package Index.
